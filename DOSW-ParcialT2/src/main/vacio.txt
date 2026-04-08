@@ -1,0 +1,1070 @@
+
+GUÍA COMPLETA PARA CONSTRUIR UNA API PEQUEÑA EN SPRING BOOT
+Juan Ángel - guía de estudio / plantilla operativa
+
+============================================================
+1. IDEA GENERAL
+============================================================
+
+Una API pequeña en Spring Boot normalmente se construye así:
+
+1. Levantar la base de datos
+2. Configurar la conexión en application.properties
+3. Crear la entidad (@Entity)
+4. Crear el repository
+5. Crear el DTO
+6. Crear el mapper
+7. Crear el service
+8. Crear el controller
+9. Correr la aplicación
+10. Probar en Postman
+
+Idea mental clave:
+Postman habla con Spring Boot.
+Spring Boot habla con PostgreSQL.
+
+Entonces:
+- Postman usa localhost:8080
+- Spring Boot usa localhost:5432 para la base
+
+============================================================
+2. LOCALHOST Y PUERTOS
+============================================================
+
+localhost siempre significa: "mi propio computador"
+
+La estructura general es:
+
+localhost:PUERTO
+
+Eso significa:
+"quiero hablar con un servicio que corre en mi máquina, en ese puerto"
+
+En este proyecto hay dos localhost importantes:
+
+A. PostgreSQL
+   localhost:5432
+
+B. API Spring Boot
+   localhost:8080
+
+No se deben confundir.
+
+------------------------------------------------------------
+2.1 PostgreSQL
+------------------------------------------------------------
+
+Si Docker se levanta así:
+
+docker run --name dosw-postgres -e POSTGRES_DB=doswparcial -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgres -p 5432:5432 -d postgres:16
+
+entonces PostgreSQL queda disponible en:
+
+localhost:5432
+
+Eso se usa en application.properties:
+
+spring.datasource.url=jdbc:postgresql://localhost:5432/doswparcial
+
+------------------------------------------------------------
+2.2 API Spring Boot
+------------------------------------------------------------
+
+Si en application.properties tienes:
+
+server.port=8080
+
+entonces tu API queda en:
+
+http://localhost:8080
+
+Y esa es la URL base para Postman.
+
+============================================================
+3. DOCKER Y BASE DE DATOS
+============================================================
+
+Sí necesitas base de datos.
+Lo que no necesitas es instalar PostgreSQL manualmente en Windows si usas Docker.
+
+Con Docker montas un contenedor que corre PostgreSQL.
+
+------------------------------------------------------------
+3.1 Comando para crear PostgreSQL
+------------------------------------------------------------
+
+docker run --name dosw-postgres -e POSTGRES_DB=doswparcial -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgres -p 5432:5432 -d postgres:16
+
+------------------------------------------------------------
+3.2 Explicación del comando
+------------------------------------------------------------
+
+docker run
+- crea y arranca un contenedor
+
+--name dosw-postgres
+- nombre del contenedor
+
+-e POSTGRES_DB=doswparcial
+- crea una base de datos vacía llamada doswparcial
+
+-e POSTGRES_USER=postgres
+- usuario de la base
+
+-e POSTGRES_PASSWORD=postgres
+- contraseña
+
+-p 5432:5432
+- mapea el puerto 5432 de tu PC al 5432 del contenedor
+
+Regla mental:
+- izquierda = puerto de tu computador
+- derecha = puerto del servicio dentro del contenedor
+
+-d
+- ejecuta el contenedor en segundo plano
+
+postgres:16
+- imagen oficial de PostgreSQL versión 16
+
+------------------------------------------------------------
+3.3 Qué hacer con los puertos
+------------------------------------------------------------
+
+Si el puerto 5432 está libre:
+- usa 5432:5432
+
+Si el puerto 5432 ya está ocupado:
+- usa por ejemplo 5433:5432
+
+Entonces tu properties cambia a:
+
+spring.datasource.url=jdbc:postgresql://localhost:5433/doswparcial
+
+------------------------------------------------------------
+3.4 Comandos Docker importantes
+------------------------------------------------------------
+
+Ver versión:
+docker --version
+
+Ver contenedores corriendo:
+docker ps
+
+Ver todos los contenedores:
+docker ps -a
+
+Iniciar contenedor existente:
+docker start dosw-postgres
+
+Detener contenedor:
+docker stop dosw-postgres
+
+Borrar contenedor:
+docker rm -f dosw-postgres
+
+Ver logs:
+docker logs dosw-postgres
+
+Entrar a PostgreSQL:
+docker exec -it dosw-postgres psql -U postgres -d doswparcial
+
+============================================================
+4. APPLICATION.PROPERTIES
+============================================================
+
+Contenido recomendado:
+
+spring.datasource.url=jdbc:postgresql://localhost:5432/doswparcial
+spring.datasource.username=postgres
+spring.datasource.password=postgres
+spring.datasource.driver-class-name=org.postgresql.Driver
+
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.show-sql=true
+spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.PostgreSQLDialect
+
+server.port=8080
+spring.application.name=DOSW-ParcialT2
+
+------------------------------------------------------------
+4.1 Qué hace cada línea
+------------------------------------------------------------
+
+spring.datasource.url
+- ruta de conexión a PostgreSQL
+
+spring.datasource.username
+- usuario de la base
+
+spring.datasource.password
+- contraseña
+
+spring.datasource.driver-class-name
+- driver JDBC
+
+spring.jpa.hibernate.ddl-auto=update
+- crea o actualiza tablas automáticamente a partir de las entidades
+
+spring.jpa.show-sql=true
+- muestra SQL en consola
+
+spring.jpa.properties.hibernate.dialect
+- dialecto para PostgreSQL
+
+server.port=8080
+- puerto donde corre la API
+
+============================================================
+5. ESTRUCTURA DEL PROYECTO
+============================================================
+
+Estructura recomendada:
+
+src
+├─ main
+│  ├─ java
+│  │  └─ edu/dosw/parcial
+│  │     ├─ config
+│  │     ├─ controller
+│  │     ├─ dto
+│  │     ├─ entity
+│  │     ├─ exception
+│  │     ├─ mapper
+│  │     ├─ model
+│  │     ├─ repository
+│  │     ├─ security
+│  │     ├─ service
+│  │     └─ Application.java
+│  ├─ resources
+│  │  └─ application.properties
+│  └─ docs
+│     ├─ uml
+│     ├─ images
+│     └─ requirements
+└─ test
+   └─ java
+
+============================================================
+6. ORDEN CORRECTO PARA CONSTRUIR LA API
+============================================================
+
+Cuando te den el enunciado del parcial, el orden correcto es:
+
+1. Identificar la entidad principal
+2. Identificar atributos
+3. Crear la Entity
+4. Crear el DTO
+5. Crear el Repository
+6. Crear el Mapper
+7. Crear el Service
+8. Crear el ServiceImpl
+9. Crear el Controller
+10. Crear manejador de excepciones
+11. Correr la app
+12. Probar en Postman
+
+No empieces por controller si aún no sabes la entidad ni la persistencia.
+
+============================================================
+7. CÓMO CREAR LAS CLASES EN INTELLIJ
+============================================================
+
+Ejemplo para Libro:
+
+1. Clic derecho sobre el package edu.dosw.parcial
+2. New
+3. Package
+4. Crear:
+   - entity
+   - dto
+   - repository
+   - mapper
+   - service
+   - controller
+   - exception
+
+Luego dentro de cada package:
+clic derecho -> New -> Java Class
+
+============================================================
+8. ENTITY: CÓMO SE HACE Y CÓMO SE CREAN TABLAS
+============================================================
+
+Ejemplo:
+
+package edu.dosw.parcial.entity;
+
+import jakarta.persistence.*;
+
+@Entity
+@Table(name = "libros")
+public class Libro {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(nullable = false)
+    private String titulo;
+
+    @Column(nullable = false)
+    private String autor;
+
+    @Column(nullable = false)
+    private Double precio;
+
+    public Libro() {
+    }
+
+    public Libro(Long id, String titulo, String autor, Double precio) {
+        this.id = id;
+        this.titulo = titulo;
+        this.autor = autor;
+        this.precio = precio;
+    }
+
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public String getTitulo() {
+        return titulo;
+    }
+
+    public void setTitulo(String titulo) {
+        this.titulo = titulo;
+    }
+
+    public String getAutor() {
+        return autor;
+    }
+
+    public void setAutor(String autor) {
+        this.autor = autor;
+    }
+
+    public Double getPrecio() {
+        return precio;
+    }
+
+    public void setPrecio(Double precio) {
+        this.precio = precio;
+    }
+}
+
+------------------------------------------------------------
+8.1 Explicación de anotaciones
+------------------------------------------------------------
+
+@Entity
+- esta clase representa una tabla
+
+@Table(name = "libros")
+- nombre real de la tabla
+
+@Id
+- clave primaria
+
+@GeneratedValue(strategy = GenerationType.IDENTITY)
+- id autogenerado por la base de datos
+
+@Column(nullable = false)
+- la columna no puede ser null
+
+------------------------------------------------------------
+8.2 Cómo se crean las tablas
+------------------------------------------------------------
+
+No necesitas crear la tabla manualmente si usas JPA/Hibernate.
+
+Proceso:
+1. Levantas PostgreSQL
+2. Configuras application.properties
+3. Creas la clase con @Entity
+4. Corres la app con:
+   mvn spring-boot:run
+5. Hibernate crea la tabla automáticamente
+
+Por eso sí montas base de datos, pero no necesariamente escribes CREATE TABLE manual.
+
+============================================================
+9. DTO: QUÉ ES Y CÓMO RECIBE DATOS
+============================================================
+
+Ejemplo:
+
+package edu.dosw.parcial.dto;
+
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
+
+public class LibroDTO {
+
+    private Long id;
+
+    @NotBlank(message = "El título es obligatorio")
+    private String titulo;
+
+    @NotBlank(message = "El autor es obligatorio")
+    private String autor;
+
+    @NotNull(message = "El precio es obligatorio")
+    @Positive(message = "El precio debe ser mayor que cero")
+    private Double precio;
+
+    public LibroDTO() {
+    }
+
+    public LibroDTO(Long id, String titulo, String autor, Double precio) {
+        this.id = id;
+        this.titulo = titulo;
+        this.autor = autor;
+        this.precio = precio;
+    }
+
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public String getTitulo() {
+        return titulo;
+    }
+
+    public void setTitulo(String titulo) {
+        this.titulo = titulo;
+    }
+
+    public String getAutor() {
+        return autor;
+    }
+
+    public void setAutor(String autor) {
+        this.autor = autor;
+    }
+
+    public Double getPrecio() {
+        return precio;
+    }
+
+    public void setPrecio(Double precio) {
+        this.precio = precio;
+    }
+}
+
+------------------------------------------------------------
+9.1 Explicación de anotaciones
+------------------------------------------------------------
+
+@NotBlank
+- String no puede venir null, vacío ni con espacios
+
+@NotNull
+- el valor no puede venir null
+
+@Positive
+- número mayor que cero
+
+------------------------------------------------------------
+9.2 Qué recibe realmente el DTO
+------------------------------------------------------------
+
+Si el controller usa:
+
+@PostMapping
+public ResponseEntity<LibroDTO> create(@Valid @RequestBody LibroDTO dto)
+
+entonces el JSON que mandas desde Postman se convierte en un objeto LibroDTO.
+
+Para POST crear normalmente no mandas el id porque la base lo genera.
+
+JSON correcto para POST crear:
+
+{
+  "titulo": "Clean Code",
+  "autor": "Robert C. Martin",
+  "precio": 120000
+}
+
+============================================================
+10. REPOSITORY
+============================================================
+
+Ejemplo:
+
+package edu.dosw.parcial.repository;
+
+import edu.dosw.parcial.entity.Libro;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+@Repository
+public interface LibroRepository extends JpaRepository<Libro, Long> {
+}
+
+------------------------------------------------------------
+10.1 Explicación
+------------------------------------------------------------
+
+@Repository
+- componente de acceso a datos
+
+JpaRepository<Libro, Long>
+- maneja entidad Libro
+- el id es Long
+
+Métodos que ya trae:
+- findAll()
+- findById()
+- save()
+- delete()
+
+============================================================
+11. MAPPER
+============================================================
+
+Ejemplo:
+
+package edu.dosw.parcial.mapper;
+
+import edu.dosw.parcial.dto.LibroDTO;
+import edu.dosw.parcial.entity.Libro;
+import org.springframework.stereotype.Component;
+
+@Component
+public class LibroMapper {
+
+    public LibroDTO toDTO(Libro libro) {
+        if (libro == null) {
+            return null;
+        }
+        return new LibroDTO(
+                libro.getId(),
+                libro.getTitulo(),
+                libro.getAutor(),
+                libro.getPrecio()
+        );
+    }
+
+    public Libro toEntity(LibroDTO dto) {
+        if (dto == null) {
+            return null;
+        }
+        Libro libro = new Libro();
+        libro.setId(dto.getId());
+        libro.setTitulo(dto.getTitulo());
+        libro.setAutor(dto.getAutor());
+        libro.setPrecio(dto.getPrecio());
+        return libro;
+    }
+}
+
+------------------------------------------------------------
+11.1 Explicación
+------------------------------------------------------------
+
+@Component
+- Spring la gestiona como componente
+
+toDTO
+- convierte Entity a DTO
+
+toEntity
+- convierte DTO a Entity
+
+============================================================
+12. SERVICE E INTERFAZ
+============================================================
+
+Interfaz:
+
+package edu.dosw.parcial.service;
+
+import edu.dosw.parcial.dto.LibroDTO;
+import java.util.List;
+
+public interface LibroService {
+    List<LibroDTO> findAll();
+    LibroDTO findById(Long id);
+    LibroDTO save(LibroDTO dto);
+    LibroDTO update(Long id, LibroDTO dto);
+    void deleteById(Long id);
+}
+
+Implementación:
+
+package edu.dosw.parcial.service;
+
+import edu.dosw.parcial.dto.LibroDTO;
+import edu.dosw.parcial.entity.Libro;
+import edu.dosw.parcial.exception.ResourceNotFoundException;
+import edu.dosw.parcial.mapper.LibroMapper;
+import edu.dosw.parcial.repository.LibroRepository;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+
+@Service
+public class LibroServiceImpl implements LibroService {
+
+    private final LibroRepository libroRepository;
+    private final LibroMapper libroMapper;
+
+    public LibroServiceImpl(LibroRepository libroRepository, LibroMapper libroMapper) {
+        this.libroRepository = libroRepository;
+        this.libroMapper = libroMapper;
+    }
+
+    @Override
+    public List<LibroDTO> findAll() {
+        return libroRepository.findAll()
+                .stream()
+                .map(libroMapper::toDTO)
+                .toList();
+    }
+
+    @Override
+    public LibroDTO findById(Long id) {
+        Libro libro = libroRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("No se encontró el libro con id: " + id));
+        return libroMapper.toDTO(libro);
+    }
+
+    @Override
+    public LibroDTO save(LibroDTO dto) {
+        Libro libro = libroMapper.toEntity(dto);
+        libro.setId(null);
+        return libroMapper.toDTO(libroRepository.save(libro));
+    }
+
+    @Override
+    public LibroDTO update(Long id, LibroDTO dto) {
+        Libro libroExistente = libroRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("No se encontró el libro con id: " + id));
+
+        libroExistente.setTitulo(dto.getTitulo());
+        libroExistente.setAutor(dto.getAutor());
+        libroExistente.setPrecio(dto.getPrecio());
+
+        return libroMapper.toDTO(libroRepository.save(libroExistente));
+    }
+
+    @Override
+    public void deleteById(Long id) {
+        Libro libroExistente = libroRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("No se encontró el libro con id: " + id));
+        libroRepository.delete(libroExistente);
+    }
+}
+
+------------------------------------------------------------
+12.1 Explicación
+------------------------------------------------------------
+
+@Service
+- capa de lógica de negocio
+
+Inyección por constructor
+- Spring mete automáticamente repository y mapper
+
+findAll
+- trae todo
+
+findById
+- busca por id y si no existe lanza excepción
+
+save
+- convierte DTO a Entity y guarda
+
+update
+- busca existente, cambia campos y guarda
+
+deleteById
+- valida existencia y elimina
+
+============================================================
+13. CONTROLLER
+============================================================
+
+Ejemplo:
+
+package edu.dosw.parcial.controller;
+
+import edu.dosw.parcial.dto.LibroDTO;
+import edu.dosw.parcial.service.LibroService;
+import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/libros")
+public class LibroController {
+
+    private final LibroService libroService;
+
+    public LibroController(LibroService libroService) {
+        this.libroService = libroService;
+    }
+
+    @GetMapping
+    public ResponseEntity<List<LibroDTO>> getAll() {
+        return ResponseEntity.ok(libroService.findAll());
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<LibroDTO> getById(@PathVariable Long id) {
+        return ResponseEntity.ok(libroService.findById(id));
+    }
+
+    @PostMapping
+    public ResponseEntity<LibroDTO> create(@Valid @RequestBody LibroDTO dto) {
+        return new ResponseEntity<>(libroService.save(dto), HttpStatus.CREATED);
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<LibroDTO> update(@PathVariable Long id, @Valid @RequestBody LibroDTO dto) {
+        return ResponseEntity.ok(libroService.update(id, dto));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(@PathVariable Long id) {
+        libroService.deleteById(id);
+        return ResponseEntity.noContent().build();
+    }
+}
+
+------------------------------------------------------------
+13.1 Explicación de anotaciones
+------------------------------------------------------------
+
+@RestController
+- expone endpoints REST y devuelve JSON
+
+@RequestMapping("/api/libros")
+- ruta base del controller
+
+@GetMapping
+- petición GET
+
+@PostMapping
+- petición POST
+
+@PutMapping
+- petición PUT
+
+@DeleteMapping
+- petición DELETE
+
+@PathVariable
+- toma un dato desde la URL
+
+@RequestBody
+- convierte el body JSON en un DTO
+
+@Valid
+- activa validaciones del DTO
+
+============================================================
+14. EXCEPCIONES
+============================================================
+
+ResourceNotFoundException:
+
+package edu.dosw.parcial.exception;
+
+public class ResourceNotFoundException extends RuntimeException {
+    public ResourceNotFoundException(String message) {
+        super(message);
+    }
+}
+
+GlobalExceptionHandler:
+
+package edu.dosw.parcial.exception;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
+
+@RestControllerAdvice
+public class GlobalExceptionHandler {
+
+    @ExceptionHandler(ResourceNotFoundException.class)
+    public ResponseEntity<String> handleNotFound(ResourceNotFoundException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ex.getMessage());
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<String> handleValidation(MethodArgumentNotValidException ex) {
+        String message = ex.getBindingResult()
+                .getFieldErrors()
+                .stream()
+                .findFirst()
+                .map(error -> error.getDefaultMessage())
+                .orElse("Error de validación");
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(message);
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<String> handleGeneric(Exception ex) {
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body("Error interno del servidor: " + ex.getMessage());
+    }
+}
+
+------------------------------------------------------------
+14.1 Explicación
+------------------------------------------------------------
+
+@RestControllerAdvice
+- manejador global de errores
+
+@ExceptionHandler
+- captura tipos concretos de excepción
+
+============================================================
+15. POSTMAN: CÓMO ARMAR LAS URL Y LOS BODIES
+============================================================
+
+------------------------------------------------------------
+15.1 Regla general de URL
+------------------------------------------------------------
+
+http://localhost:8080 + ruta del controller
+
+Ejemplo si el controller tiene:
+@RequestMapping("/api/libros")
+
+Base URL:
+http://localhost:8080/api/libros
+
+------------------------------------------------------------
+15.2 Endpoints CRUD ejemplo
+------------------------------------------------------------
+
+Listar:
+GET http://localhost:8080/api/libros
+
+Buscar por id:
+GET http://localhost:8080/api/libros/1
+
+Crear:
+POST http://localhost:8080/api/libros
+
+Actualizar:
+PUT http://localhost:8080/api/libros/1
+
+Eliminar:
+DELETE http://localhost:8080/api/libros/1
+
+------------------------------------------------------------
+15.3 Body para POST y PUT
+------------------------------------------------------------
+
+Si el método recibe @RequestBody LibroDTO:
+- en Postman usar Body -> raw -> JSON
+
+POST crear:
+{
+  "titulo": "Clean Code",
+  "autor": "Robert C. Martin",
+  "precio": 120000
+}
+
+PUT actualizar:
+{
+  "titulo": "Clean Code 2",
+  "autor": "Robert C. Martin",
+  "precio": 125000
+}
+
+------------------------------------------------------------
+15.4 Cuándo usar form-data
+------------------------------------------------------------
+
+Usa form-data cuando el controller reciba @RequestParam y especialmente archivos.
+
+Ejemplo:
+
+@PostMapping("/subir")
+public ResponseEntity<String> subir(
+    @RequestParam("archivo") MultipartFile archivo,
+    @RequestParam("nombre") String nombre)
+
+En Postman:
+Body -> form-data
+
+Key         Type   Value
+archivo     File   foto.jpg
+nombre      Text   Juan
+
+============================================================
+16. DIFERENCIA ENTRE @RequestBody, @RequestParam Y @PathVariable
+============================================================
+
+@RequestBody
+- toma datos del body
+- normalmente JSON raw
+- se usa para DTOs y CRUD
+
+@RequestParam
+- toma parámetros simples
+- puede venir de query params o form-data
+- común en filtros o subida de archivos
+
+@PathVariable
+- toma un valor desde la URL
+- ejemplo: /libros/1
+
+============================================================
+17. CÓMO VER SI LAS TABLAS SÍ SE CREARON
+============================================================
+
+Entrar a PostgreSQL:
+
+docker exec -it dosw-postgres psql -U postgres -d doswparcial
+
+Luego:
+
+\dt
+
+Eso lista tablas.
+
+Para ver detalle:
+
+\d libros
+
+Salir:
+
+\q
+
+============================================================
+18. COMANDOS MAVEN IMPORTANTES
+============================================================
+
+Compilar:
+mvn clean compile
+
+Ejecutar tests:
+mvn test
+
+Correr la app:
+mvn spring-boot:run
+
+Empaquetar:
+mvn package
+
+Generar JaCoCo:
+mvn clean verify
+
+Ejecutar SonarQube:
+mvn clean verify sonar:sonar
+
+============================================================
+19. JACOCO
+============================================================
+
+Para cobertura:
+
+mvn clean verify
+
+Reporte habitual:
+target/site/jacoco/index.html
+
+============================================================
+20. SONARQUBE
+============================================================
+
+Comando general:
+
+mvn clean verify sonar:sonar
+
+Si necesitas parámetros:
+
+mvn clean verify sonar:sonar -Dsonar.projectKey=DOSW-ParcialT2 -Dsonar.host.url=http://localhost:9000 -Dsonar.login=TU_TOKEN
+
+============================================================
+21. SECUENCIA PERFECTA PARA EL PARCIAL
+============================================================
+
+1. Abrir Docker Desktop
+2. docker start dosw-postgres
+3. docker ps
+4. Revisar application.properties
+5. Leer enunciado y detectar entidad
+6. Crear Entity
+7. Crear DTO
+8. Crear Repository
+9. Crear Mapper
+10. Crear Service
+11. Crear ServiceImpl
+12. Crear Controller
+13. Crear ExceptionHandler
+14. Correr:
+    mvn spring-boot:run
+15. Probar en Postman
+16. Verificar tablas si hace falta
+
+============================================================
+22. CHECKLIST RÁPIDO
+============================================================
+
+- Docker corriendo
+- Contenedor PostgreSQL arriba
+- application.properties bien configurado
+- Puerto 5432 correcto
+- API en 8080
+- DTO con validaciones
+- Entity con @Entity
+- Repository extends JpaRepository
+- Service con lógica
+- Controller con endpoints
+- Postman usando raw JSON para CRUD
+- Tablas verificadas con \dt si hace falta
+
+============================================================
+23. FRASES MENTALES CLAVE
+============================================================
+
+- Postman habla con Spring Boot.
+- Spring Boot habla con PostgreSQL.
+- localhost:8080 = API
+- localhost:5432 = base de datos
+- @Entity = tabla
+- @RequestBody = JSON raw
+- @RequestParam = form-data o query params
+- @PathVariable = dato en la URL
+- ddl-auto=update = Hibernate crea/actualiza tablas
+
+============================================================
+24. CONSEJO FINAL
+============================================================
+
+No arranques por controller.
+Arranca por la entidad y la persistencia.
+
+Orden seguro:
+Entity -> DTO -> Repository -> Mapper -> Service -> Controller -> Postman
+
+Haz una API limpia, funcional y defendible.
+La meta es:
+- que levante
+- que conecte
+- que cree tablas
+- que responda endpoints
+- que pruebe bien en Postman
